@@ -74,7 +74,7 @@ public class HotelController
 
 	@RequestMapping(
 		method = RequestMethod.GET,
-		value = "/search/{city_id}"
+		value = "/search/{city_id}/distance"
 	)
 	public @ResponseBody
 	ResponseEntity<Map<Float, Hotel>> searchHotelByCityClosetoCenter(
