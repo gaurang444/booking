@@ -46,8 +46,10 @@ public class HealthController
 	{
 		City city=new City("Bangalore", (float) 21.23, (float) 36.23);
 		Hotel hotel=new Hotel("oyo-rooms-indiranagar","100feet-road", (float) 67.3, (float) 45.3, 2L);
+		Hotel hotel1=new Hotel("oyo-rooms-marathalli","marathalli-tech-park", (float) 56.3, (float) 12.3, 2L);
 		cityRepositorypr.save(city);
 		hotelRepository.save(hotel);
+		hotelRepository.save(hotel1);
 		return new ResponseEntity<>("{\"status\" : \"UP\"}", HttpStatus.OK);
 	}
 

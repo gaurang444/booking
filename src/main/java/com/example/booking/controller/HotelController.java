@@ -4,8 +4,11 @@ import lombok.extern.java.Log;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.UUID;
 
 import javax.xml.ws.Action;
@@ -21,7 +24,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.booking.model.City;
 import com.example.booking.model.Hotel;
+import com.example.booking.repository.CityRepository;
 import com.example.booking.repository.HotelRepository;
 
 @Slf4j
@@ -30,7 +35,12 @@ import com.example.booking.repository.HotelRepository;
 public class HotelController
 {
 	@Autowired
-	HotelRepository hpr;
+	HotelRepository hotelRepository;
+
+	@Autowired
+	CityRepository cityRepository;
+
+	public final static double AVERAGE_RADIUS_OF_EARTH_KM = 6371;
 
 	@RequestMapping(
 		method = RequestMethod.GET,
@@ -42,7 +52,7 @@ public class HotelController
 			Long hotelId
 	)
 	{
-		Hotel model = hpr.findById(hotelId).orElse(null);
+		Hotel model = hotelRepository.findById(hotelId).orElse(null);
 		log.info("Hotel Model By id {} is {}",hotelId,model);
 		return ResponseEntity.ok(model);
 	}
@@ -57,33 +67,53 @@ public class HotelController
 			Long hotelId
 	)
 	{
-		hpr.deleteById(hotelId);
+		hotelRepository.deleteById(hotelId);
 		log.info("Hotel Model Deleted By id {}",hotelId);
 		return ResponseEntity.status(HttpStatus.OK).body("OK");
 	}
 
 	@RequestMapping(
-		method = RequestMethod.DELETE,
+		method = RequestMethod.GET,
 		value = "/search/{city_id}"
 	)
 	public @ResponseBody
-	ResponseEntity<List<Hotel>> searchHotelByCityClosetoCenter(
+	ResponseEntity<Map<Float, Hotel>> searchHotelByCityClosetoCenter(
 		@PathVariable(value = "city_id")
 			Long cityId
 	)
 	{
-		List<Hotel> hotelList = hpr.findAll();
-		List<Hotel> hotelsByCityId = new ArrayList<>();
+		List<Hotel> hotelList = hotelRepository.findAll();
+		City cityById = cityRepository.findById(cityId).orElse(null);
+		Map<Float, Hotel> responseMap = new HashMap<>();
 		for(int i=0;i<hotelList.size();i++)
 		{
 			if(hotelList.get(i).getCityId()==cityId)
 			{
-				hotelsByCityId.add(hotelList.get(i));
+				Float distanceOfHotelFromCity=calculateDistanceInKilometer(hotelList.get(i).getLatitude(),hotelList.get(i).getLongitude(),cityById.getCityLatitude(),cityById.getCityLongitude());
+				responseMap.put(distanceOfHotelFromCity, hotelList.get(i));
 			}
 		}
-		hotelsByCityId.stream().sorted();
-		log.info("Hotel Model By City id {} is {}",cityId,hotelsByCityId);
-		return ResponseEntity.ok(hotelsByCityId);
+		Map<Float, Hotel> hotelsClosestToCity = new TreeMap<Float, Hotel>(responseMap);
+		log.info("Hotel Closest to City id {} is {}",cityId,hotelsClosestToCity);
+		return ResponseEntity.ok(hotelsClosestToCity);
 	}
+
+
+	public float calculateDistanceInKilometer(double hotelLat, double hotelLong,
+		double cityLat, double cityLong)
+	{
+
+		double latDistance = Math.toRadians(hotelLat - cityLat);
+		double lngDistance = Math.toRadians(hotelLong - cityLong);
+
+		double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+			+ Math.cos(Math.toRadians(hotelLat)) * Math.cos(Math.toRadians(cityLat))
+			* Math.sin(lngDistance / 2) * Math.sin(lngDistance / 2);
+
+		double finalDistance = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+		return (float) finalDistance;
+	}
+
 }
 
